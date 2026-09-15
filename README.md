@@ -3,6 +3,11 @@
 Adjust your windows' corner rounding, transparency, and background blur from a
 top-bar dropdown — without touching any config file while you tweak.
 
+# Screenshot
+
+<img width="515" height="389" alt="RCB" src="https://github.com/user-attachments/assets/b62ca4c9-2fab-45f7-810e-0e1ba08ca9a3" />
+
+
 ## Features
 
 - **Bar-widget dropdown** — click the sliders icon in the top bar panel.
