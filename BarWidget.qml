@@ -18,6 +18,8 @@ BarWidget {
     selectedIndex = 0
   }
 
+  Component.onCompleted: root.ensureWiring()
+
   implicitWidth: button.implicitWidth
   implicitHeight: barSize
 
@@ -180,6 +182,12 @@ BarWidget {
   }
 
   function apply() {
+    if (!root.wired) {
+      root.pendingApply = true
+      root.ensureWiring()
+      return
+    }
+    root.pendingApply = false
     var body = "return {\n"
       + "  rounding = " + Math.round(root.rounding) + ",\n"
       + "  active_opacity = " + root.activeOpacity.toFixed(2) + ",\n"
@@ -190,6 +198,38 @@ BarWidget {
       + "}\n"
     applyProcess.command = ["bash", "-c", stateFileScript(body)]
     applyProcess.running = true
+  }
+
+  property bool wired: false
+  property bool pendingApply: false
+
+  function ensureWiring() {
+    if (root.wired) return
+    setupProcess.running = true
+  }
+
+  Process {
+    id: setupProcess
+    running: false
+    command: ["bash", "-c",
+      "if [ ! -f \"$HOME/.config/hypr/appearance.lua\" ]; then "
+      + "cp \"$HOME/.config/omarchy/plugins/custom.rounded-corner-blur/appearance.lua\" "
+      + "\"$HOME/.config/hypr/appearance.lua\" ; fi ; "
+      + "if ! grep -q 'require(\"hypr.appearance\")' \"$HOME/.config/hypr/hyprland.lua\" 2>/dev/null; then "
+      + "sed -i '/require(\"hypr.looknfeel\")/a require(\"hypr.appearance\")' \"$HOME/.config/hypr/hyprland.lua\" ; fi ; "
+      + "if ! grep -q 'require(\"hypr.appearance\")' \"$HOME/.config/hypr/hyprland.lua\" 2>/dev/null; then "
+      + "printf '\\nrequire(\"hypr.appearance\")\\n' >> \"$HOME/.config/hypr/hyprland.lua\" ; fi ; "
+      + "hyprctl reload >/dev/null 2>&1"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.setupDone(text)
+    }
+  }
+
+  function setupDone(output) {
+    root.wired = true
+    if (root.pendingApply) root.apply()
+    else Qt.callLater(root.loadValues)
   }
 
   Process {

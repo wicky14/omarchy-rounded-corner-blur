@@ -5,8 +5,7 @@ top-bar dropdown — without touching any config file while you tweak.
 
 ## Features
 
-- **Bar-widget dropdown** — click the sliders icon in the top bar (like
-  YouTube Music / other Omarchy bar widgets) to open the panel.
+- **Bar-widget dropdown** — click the sliders icon in the top bar panel.
 - **Corner rounding** — 0–30 px.
 - **Opacity** — active and inactive window opacity, 50–100%.
 - **Blur** — toggle plus size (0–32) and passes (1–6).
@@ -30,26 +29,12 @@ top-bar dropdown — without touching any config file while you tweak.
 omarchy plugin add https://github.com/wicky14/omarchy-rounded-corner-blur.git --enable --yes
 ```
 
-One-time Hyprland setup so the plugin can apply changes:
+No manual config setup needed — the plugin wires itself up on first launch: it
+copies `appearance.lua` to `~/.config/hypr/` and adds
+`require("hypr.appearance")` to `~/.config/hypr/hyprland.lua` automatically, then
+reloads Hyprland.
 
-```bash
-cp ~/.config/omarchy/plugins/custom.rounded-corner-blur/appearance.lua ~/.config/hypr/appearance.lua
-```
-
-Then ensure `~/.config/hypr/hyprland.lua` loads that module (add near the top,
-after any `require("hypr.looknfeel")`):
-
-```lua
-require("hypr.appearance")
-```
-
-Apply with:
-
-```bash
-hyprctl reload
-```
-
-Finally, if the icon does not show up in the bar yet:
+A shell restart is required for the bar to pick up newly added widget files:
 
 ```bash
 omarchy restart shell
@@ -70,13 +55,15 @@ Hyprland falls back to the values Omarchy / your theme set.
   so the sliders always start where your setup actually is.
 - Adjusting a control writes `~/.local/state/omarchy/appearance.lua` and runs
   `hyprctl reload`.
-- `~/.config/hypr/appearance.lua` (which you copied above) applies that state
-  via `hl.config({ decoration = ... })`.
+- `~/.config/hypr/appearance.lua` (auto-installed on first launch) applies that
+  state via `hl.config({ decoration = ... })`.
 - **Reset** deletes the state file and reloads — no leftover state, your theme
   defaults win again.
 
-The plugin never edits `looknfeel.lua`, `hyprland.lua`, or theme files. Removing
-the plugin + the one-line `require` + `appearance.lua` fully restores Omarchy.
+The plugin never edits `looknfeel.lua` or theme files. On first launch it adds a
+single `require("hypr.appearance")` line to `hyprland.lua` and an
+`appearance.lua` module; removing the plugin plus those two files fully restores
+Omarchy.
 
 ## Uninstall
 
@@ -84,6 +71,18 @@ the plugin + the one-line `require` + `appearance.lua` fully restores Omarchy.
 omarchy plugin remove custom.rounded-corner-blur --yes
 rm ~/.config/hypr/appearance.lua
 rm ~/.local/state/omarchy/appearance.lua
+```
+
+Then remove the `require("hypr.appearance")` line from
+`~/.config/hypr/hyprland.lua`:
+
+```bash
+sed -i '/require("hypr.appearance")/d' ~/.config/hypr/hyprland.lua
+```
+
+Apply with:
+
+```bash
 hyprctl reload
 ```
 
