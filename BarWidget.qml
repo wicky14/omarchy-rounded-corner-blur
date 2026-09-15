@@ -36,7 +36,7 @@ BarWidget {
   property int activePreset: -1
   property int revertSeconds: 15
   property int countdownLeft: -1
-  property var baseline: null
+  property var prevState: null
   property string statusText: ""
 
   readonly property var presets: [
@@ -64,7 +64,7 @@ BarWidget {
   function resetToDefaults() {
     cancelCountdown()
     activePreset = -1
-    baseline = null
+    prevState = null
     statusText = "Reset to default"
     resetProcess.running = true
   }
@@ -254,7 +254,7 @@ BarWidget {
       revertTimer.restart()
       return
     }
-    root.baseline = {
+    root.prevState = {
       rounding: root.rounding,
       activeOpacity: root.activeOpacity,
       inactiveOpacity: root.inactiveOpacity,
@@ -275,8 +275,8 @@ BarWidget {
   function revertToBaseline() {
     revertTimer.stop()
     root.countdownLeft = -1
-    if (root.baseline) {
-      revertProcess.command = ["bash", "-c", stateFileScript(stateObjectToBody(root.baseline))]
+    if (root.prevState) {
+      revertProcess.command = ["bash", "-c", stateFileScript(stateObjectToBody(root.prevState))]
     } else {
       revertProcess.command = ["bash", "-c",
         "rm -f \"$HOME/.local/state/omarchy/appearance.lua\" ; "
