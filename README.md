@@ -83,6 +83,11 @@ The `require` line is commented out (not deleted) so the state file is never
 touched again after uninstall — no leftover state, your theme defaults win
 again.
 
+Reinstalling later is safe either way: on first launch the widget re-enables a
+commented-out `require("hypr.appearance")` line (or adds a fresh one if the
+line was deleted), so you always end up with a single active line and no state
+pile-up.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

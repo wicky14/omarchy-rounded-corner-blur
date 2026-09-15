@@ -337,6 +337,8 @@ BarWidget {
       "if [ ! -f \"$HOME/.config/hypr/appearance.lua\" ]; then "
       + "cp \"$HOME/.config/omarchy/plugins/custom.rounded-corner-blur/appearance.lua\" "
       + "\"$HOME/.config/hypr/appearance.lua\" ; fi ; "
+      + "sed -i 's|^[[:space:]]*--\\{0,1\\} *require(\"hypr.appearance\").*|require(\"hypr.appearance\")|' "
+      + "\"$HOME/.config/hypr/hyprland.lua\" 2>/dev/null ; "
       + "if ! grep -q 'require(\"hypr.appearance\")' \"$HOME/.config/hypr/hyprland.lua\" 2>/dev/null; then "
       + "sed -i '/require(\"hypr.looknfeel\")/a require(\"hypr.appearance\")' \"$HOME/.config/hypr/hyprland.lua\" ; fi ; "
       + "if ! grep -q 'require(\"hypr.appearance\")' \"$HOME/.config/hypr/hyprland.lua\" 2>/dev/null; then "
