@@ -42,7 +42,7 @@ BarWidget {
   readonly property var presets: [
     { name: "Default", rounding: 0,    active: 1.0, inactive: 1.0, blur: false, size: 8,  passes: 1 },
     { name: "Rounded", rounding: 14,   active: 1.0, inactive: 1.0, blur: false, size: 8,  passes: 1 },
-    { name: "Glass",   rounding: 14,   active: 0.88, inactive: 0.80, blur: true, size: 8,  passes: 2 },
+    { name: "Glass",   rounding: 6,    active: 0.88, inactive: 0.80, blur: true, size: 8,  passes: 2 },
     { name: "Frosted", rounding: 10,   active: 0.90, inactive: 0.85, blur: true, size: 12, passes: 3 },
     { name: "Minimal", rounding: 6,    active: 0.92, inactive: 0.85, blur: true, size: 6,  passes: 2 }
   ]

@@ -26,7 +26,7 @@ top-bar dropdown — without touching any config file while you tweak.
 | ------- | -------: | -----: | -------: | :------- |
 | Default | 0        | 100%   | 100%     | off      |
 | Rounded | 14       | 100%   | 100%     | off      |
-| Glass   | 14       | 88%    | 80%      | 8 / 2    |
+| Glass   | 6        | 88%    | 80%      | 8 / 2    |
 | Frosted | 10       | 90%    | 85%      | 12 / 3   |
 | Minimal | 6        | 92%    | 85%      | 6 / 2    |
 
@@ -74,16 +74,10 @@ single `require("hypr.appearance")` line to `hyprland.lua` and an
 ## Uninstall
 
 ```bash
-omarchy plugin remove custom.rounded-corner-blur --yes \
-  && sed -i 's|^require("hypr.appearance")|-- require("hypr.appearance")|' ~/.config/hypr/hyprland.lua \
-  && hyprctl reload
+omarchy plugin remove custom.rounded-corner-blur --yes
 ```
 
-The `require` line is commented out (not deleted) so the state file is never
-touched again after uninstall — no leftover state, your theme defaults win
-again.
-
-Reinstalling later is safe either way: on first launch the widget re-enables a
+Reinstalling later is safe: on first launch the widget re-enables a
 commented-out `require("hypr.appearance")` line (or adds a fresh one if the
 line was deleted), so you always end up with a single active line and no state
 pile-up.
