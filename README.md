@@ -46,6 +46,20 @@ copies `appearance.lua` to `~/.config/hypr/` and adds
 `require("hypr.appearance")` to `~/.config/hypr/hyprland.lua` automatically, then
 reloads Hyprland.
 
+## What this plugin modifies
+
+To keep your Hyprland setup working, installing and running this plugin
+implicitly consents to the following documented changes on first launch:
+
+- **Adds** `~/.config/hypr/appearance.lua` — a new module file (never overwrites
+  an existing file).
+- **Adds or re-enables one line**, `require("hypr.appearance")`, in
+  `~/.config/hypr/hyprland.lua`.
+
+It never deletes or rewrites existing values, and never touches
+`looknfeel.lua`, theme files, or anything else in your config. If you are
+uncomfortable with either change, please **do not install** the plugin.
+
 ## Usage
 
 Click the sliders icon (right side of the bar by default) to open the panel.
