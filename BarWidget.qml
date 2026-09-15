@@ -33,6 +33,11 @@ BarWidget {
   property bool blurEnabled: false
   property int blurSize: 8
   property int blurPasses: 1
+  property int activePreset: -1
+  property int revertSeconds: 15
+  property int countdownLeft: -1
+  property var baseline: null
+  property string statusText: ""
 
   readonly property var presets: [
     { name: "Default", rounding: 0,    active: 1.0, inactive: 1.0, blur: false, size: 8,  passes: 1 },
@@ -45,22 +50,28 @@ BarWidget {
   function applyPreset(index) {
     var p = presets[index]
     if (!p) return
+    ensureBaseline()
     rounding = p.rounding
     activeOpacity = p.active
     inactiveOpacity = p.inactive
     blurEnabled = p.blur
     blurSize = p.size
     blurPasses = p.passes
+    activePreset = index
     apply()
   }
 
   function resetToDefaults() {
+    cancelCountdown()
+    activePreset = -1
+    baseline = null
+    statusText = "Reset to default"
     resetProcess.running = true
   }
 
   readonly property var sections: root.blurEnabled
-    ? ["rounding", "active", "inactive", "blur", "size", "passes", "presets", "reset"]
-    : ["rounding", "active", "inactive", "blur", "presets", "reset"]
+    ? ["rounding", "active", "inactive", "blur", "size", "passes", "presets", "apply", "reset"]
+    : ["rounding", "active", "inactive", "blur", "presets", "apply", "reset"]
 
   property string focusSection: "presets"
   property int selectedIndex: 0
@@ -92,6 +103,10 @@ BarWidget {
   }
 
   function adjust(delta) {
+    var modifying = focusSection === "rounding" || focusSection === "active"
+      || focusSection === "inactive" || focusSection === "blur"
+      || focusSection === "size" || focusSection === "passes"
+    if (modifying) ensureBaseline()
     if (focusSection === "rounding") {
       rounding = clampInt(rounding + delta, 0, 30)
     } else if (focusSection === "active") {
@@ -108,7 +123,10 @@ BarWidget {
       selectedIndex = Math.max(0, Math.min(presets.length - 1, selectedIndex + delta))
       return
     }
-    apply()
+    if (focusSection === "blur" || sectionHasSlider(focusSection)) {
+      root.activePreset = -1
+      apply()
+    }
   }
 
   function clampInt(v, lo, hi) { return Math.max(lo, Math.min(hi, Math.round(v))) }
@@ -116,10 +134,14 @@ BarWidget {
 
   function activate() {
     if (focusSection === "blur") {
+      ensureBaseline()
       blurEnabled = !blurEnabled
+      activePreset = -1
       apply()
     } else if (focusSection === "presets") {
       applyPreset(selectedIndex)
+    } else if (focusSection === "apply") {
+      applyAndRestartShell()
     } else if (focusSection === "reset") {
       resetToDefaults()
     }
@@ -159,6 +181,24 @@ BarWidget {
       case "decoration:blur:passes": root.blurPasses = parsed.int; break
       }
     }
+    root.syncPreset()
+  }
+
+  function syncPreset() {
+    var match = -1
+    for (var i = 0; i < presets.length; i++) {
+      var p = presets[i]
+      var ok = Math.round(root.rounding) === p.rounding
+        && Math.abs(root.activeOpacity - p.active) < 0.005
+        && Math.abs(root.inactiveOpacity - p.inactive) < 0.005
+        && root.blurEnabled === p.blur
+      if (p.blur) {
+        ok = ok && Math.round(root.blurSize) === p.size
+          && Math.round(root.blurPasses) === p.passes
+      }
+      if (ok) { match = i; break }
+    }
+    root.activePreset = match
   }
 
   function loadValues() {
@@ -172,12 +212,88 @@ BarWidget {
       + "hyprctl reload >/dev/null 2>&1"
   }
 
+  function restartShellScript(body) {
+    return stateFileScript(body) + " ; "
+      + "setsid omarchy restart shell </dev/null >/dev/null 2>&1 &"
+  }
+
   Process {
     id: applyProcess
     running: false
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.afterApply(text)
+    }
+  }
+
+  function stateObjectToBody(s) {
+    return "return {\n"
+      + "  rounding = " + Math.round(s.rounding) + ",\n"
+      + "  active_opacity = " + s.activeOpacity.toFixed(2) + ",\n"
+      + "  inactive_opacity = " + s.inactiveOpacity.toFixed(2) + ",\n"
+      + "  blur = { enabled = " + (s.blurEnabled ? "true" : "false")
+      + ", size = " + Math.round(s.blurSize)
+      + ", passes = " + Math.round(s.blurPasses) + " },\n"
+      + "}\n"
+  }
+
+  function buildStateBody() {
+    return stateObjectToBody({
+      rounding: root.rounding,
+      activeOpacity: root.activeOpacity,
+      inactiveOpacity: root.inactiveOpacity,
+      blurEnabled: root.blurEnabled,
+      blurSize: root.blurSize,
+      blurPasses: root.blurPasses
+    })
+  }
+
+  function ensureBaseline() {
+    if (root.countdownLeft >= 0) {
+      root.countdownLeft = root.revertSeconds
+      revertTimer.restart()
+      return
+    }
+    root.baseline = {
+      rounding: root.rounding,
+      activeOpacity: root.activeOpacity,
+      inactiveOpacity: root.inactiveOpacity,
+      blurEnabled: root.blurEnabled,
+      blurSize: root.blurSize,
+      blurPasses: root.blurPasses
+    }
+    root.statusText = ""
+    root.countdownLeft = root.revertSeconds
+    revertTimer.start()
+  }
+
+  function cancelCountdown() {
+    revertTimer.stop()
+    root.countdownLeft = -1
+  }
+
+  function revertToBaseline() {
+    revertTimer.stop()
+    root.countdownLeft = -1
+    if (root.baseline) {
+      revertProcess.command = ["bash", "-c", stateFileScript(stateObjectToBody(root.baseline))]
+    } else {
+      revertProcess.command = ["bash", "-c",
+        "rm -f \"$HOME/.local/state/omarchy/appearance.lua\" ; "
+        + "hyprctl reload >/dev/null 2>&1"]
+    }
+    revertProcess.running = true
+    root.statusText = "Reverted to previous state"
+  }
+
+  Timer {
+    id: revertTimer
+    interval: 1000
+    repeat: true
+    running: false
+    onTriggered: {
+      if (root.countdownLeft <= 1) root.revertToBaseline()
+      else root.countdownLeft = root.countdownLeft - 1
     }
   }
 
@@ -188,20 +304,26 @@ BarWidget {
       return
     }
     root.pendingApply = false
-    var body = "return {\n"
-      + "  rounding = " + Math.round(root.rounding) + ",\n"
-      + "  active_opacity = " + root.activeOpacity.toFixed(2) + ",\n"
-      + "  inactive_opacity = " + root.inactiveOpacity.toFixed(2) + ",\n"
-      + "  blur = { enabled = " + (root.blurEnabled ? "true" : "false")
-      + ", size = " + Math.round(root.blurSize)
-      + ", passes = " + Math.round(root.blurPasses) + " },\n"
-      + "}\n"
-    applyProcess.command = ["bash", "-c", stateFileScript(body)]
+    applyProcess.command = ["bash", "-c", stateFileScript(buildStateBody())]
     applyProcess.running = true
+  }
+
+  function applyAndRestartShell() {
+    if (!root.wired) {
+      root.pendingRestart = true
+      root.ensureWiring()
+      return
+    }
+    root.pendingRestart = false
+    cancelCountdown()
+    root.statusText = "Applied"
+    restartProcess.command = ["bash", "-c", restartShellScript(buildStateBody())]
+    restartProcess.running = true
   }
 
   property bool wired: false
   property bool pendingApply: false
+  property bool pendingRestart: false
 
   function ensureWiring() {
     if (root.wired) return
@@ -228,7 +350,8 @@ BarWidget {
 
   function setupDone(output) {
     root.wired = true
-    if (root.pendingApply) root.apply()
+    if (root.pendingRestart) root.applyAndRestartShell()
+    else if (root.pendingApply) root.apply()
     else Qt.callLater(root.loadValues)
   }
 
@@ -237,7 +360,26 @@ BarWidget {
     running: false
     command: ["bash", "-c",
       "rm -f \"$HOME/.local/state/omarchy/appearance.lua\" ; "
-      + "hyprctl reload >/dev/null 2>&1"]
+      + "hyprctl reload >/dev/null 2>&1 ; "
+      + "setsid omarchy restart shell </dev/null >/dev/null 2>&1 &"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.afterApply(text)
+    }
+  }
+
+  Process {
+    id: restartProcess
+    running: false
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.afterApply(text)
+    }
+  }
+
+  Process {
+    id: revertProcess
+    running: false
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.afterApply(text)
@@ -274,7 +416,7 @@ BarWidget {
         loadValues()
         cursorActive = true
         focusSection = "presets"
-        selectedIndex = 0
+        selectedIndex = Math.max(0, root.activePreset)
       }
     }
 
@@ -311,7 +453,7 @@ BarWidget {
           sliderStep: 1
           sliderInteger: true
           hasCursor: root.cursorActive && root.focusSection === "rounding"
-          onValueChanged: { root.rounding = __value; root.apply() }
+          onValueChanged: { root.ensureBaseline(); root.rounding = __value; root.activePreset = -1; root.apply() }
         }
 
         SliderRow {
@@ -322,7 +464,7 @@ BarWidget {
           sliderMax: 1.0
           sliderStep: 0.01
           hasCursor: root.cursorActive && root.focusSection === "active"
-          onValueChanged: { root.activeOpacity = __value; root.apply() }
+          onValueChanged: { root.ensureBaseline(); root.activeOpacity = __value; root.activePreset = -1; root.apply() }
         }
 
         SliderRow {
@@ -333,7 +475,7 @@ BarWidget {
           sliderMax: 1.0
           sliderStep: 0.01
           hasCursor: root.cursorActive && root.focusSection === "inactive"
-          onValueChanged: { root.inactiveOpacity = __value; root.apply() }
+          onValueChanged: { root.ensureBaseline(); root.inactiveOpacity = __value; root.activePreset = -1; root.apply() }
         }
 
         Row {
@@ -356,7 +498,9 @@ BarWidget {
             accent: root.accent
             hasCursor: root.cursorActive && root.focusSection === "blur"
             onToggled: {
+              root.ensureBaseline()
               root.blurEnabled = !root.blurEnabled
+              root.activePreset = -1
               root.apply()
             }
           }
@@ -376,7 +520,7 @@ BarWidget {
             sliderStep: 1
             sliderInteger: true
             hasCursor: root.cursorActive && root.focusSection === "size"
-            onValueChanged: { root.blurSize = __value; root.apply() }
+            onValueChanged: { root.ensureBaseline(); root.blurSize = __value; root.activePreset = -1; root.apply() }
           }
 
           SliderRow {
@@ -388,7 +532,7 @@ BarWidget {
             sliderStep: 1
             sliderInteger: true
             hasCursor: root.cursorActive && root.focusSection === "passes"
-            onValueChanged: { root.blurPasses = __value; root.apply() }
+            onValueChanged: { root.ensureBaseline(); root.blurPasses = __value; root.activePreset = -1; root.apply() }
           }
         }
 
@@ -414,6 +558,9 @@ BarWidget {
               required property var modelData
               required property int index
               text: modelData.name
+              active: index === root.activePreset
+              selected: index === root.activePreset
+              foreground: index === root.activePreset ? root.accent : root.foreground
               hasCursor: root.cursorActive && root.focusSection === "presets"
                 && root.selectedIndex === index
               onClicked: root.applyPreset(index)
@@ -423,9 +570,48 @@ BarWidget {
 
         Button {
           width: parent.width
+          text: "Apply & restart shell"
+          hasCursor: root.cursorActive && root.focusSection === "apply"
+          onClicked: root.applyAndRestartShell()
+        }
+
+        Button {
+          width: parent.width
           text: "Reset to default"
           hasCursor: root.cursorActive && root.focusSection === "reset"
           onClicked: root.resetToDefaults()
+        }
+
+        Row {
+          width: parent.width
+          visible: root.countdownLeft >= 0
+          spacing: Style.spacing.sm
+
+          Text {
+            width: Style.space(18)
+            anchors.verticalCenter: parent.verticalCenter
+            text: "\uf017"
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            color: root.accent
+          }
+
+          Text {
+            text: "Auto-revert in " + root.countdownLeft + "s · Apply to keep"
+            anchors.verticalCenter: parent.verticalCenter
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+          }
+        }
+
+        Text {
+          width: parent.width
+          visible: root.statusText !== "" && root.countdownLeft < 0
+          text: root.statusText
+          color: Qt.darker(root.foreground, 1.5)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
         }
       }
     }

@@ -9,9 +9,16 @@ top-bar dropdown — without touching any config file while you tweak.
 - **Corner rounding** — 0–30 px.
 - **Opacity** — active and inactive window opacity, 50–100%.
 - **Blur** — toggle plus size (0–32) and passes (1–6).
-- **Presets** — Default, Rounded, Glass, Frosted, Minimal (one click).
-- **Reset to default** — removes the stored state and returns to Omarchy's own
-  defaults (the active theme wins).
+- **Presets** — Default, Rounded, Glass, Frosted, Minimal (one click). The
+  active preset stays highlighted; adjusting a slider deselects it.
+- **Apply & restart shell** — one button that writes the current settings,
+  reloads Hyprland, and restarts the bar. No terminal needed.
+- **Auto-revert** — after a preset click or slider drag the change is applied
+  live on the window, but a 15-second countdown starts; unless you press
+  **Apply**, the panel restores the previous state automatically.
+- **Reset to default** — removes the stored state, reloads Hyprland, and
+  restarts the bar, returning to Omarchy's own defaults (the active theme
+  wins).
 - **Keyboard friendly** — arrows adjust, Enter toggles/activates, Tab cycles,
   Esc closes. Fully mouse-friendly too.
 
@@ -46,8 +53,12 @@ omarchy restart shell
 
 Click the sliders icon (right side of the bar by default) to open the panel.
 Drag a slider or use the arrows / +/- keys. Hitting a preset applies it
-immediately. **Reset to default** removes the stored state and reloads, so
-Hyprland falls back to the values Omarchy / your theme set.
+immediately and highlights the active preset. A 15-second countdown then
+starts: the change is live on your windows, and if you do **not** press
+**Apply & restart shell** in time, the previous state is restored automatically.
+**Apply & restart shell** locks the change in and restarts the bar (handy after
+a plugin update). **Reset to default** clears the stored state and restarts the
+bar, so Hyprland falls back to the values Omarchy / your theme set.
 
 ## How it works
 

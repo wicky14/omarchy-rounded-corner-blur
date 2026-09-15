@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "custom.rounded-corner-blur",
   "name": "Rounded Corner Blur",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "author": "wicky14",
   "description": "Adjust window corner rounding, transparency, and blur from a top-bar dropdown.",
   "license": "MIT",
