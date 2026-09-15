@@ -66,6 +66,7 @@ BarWidget {
     activePreset = -1
     prevState = null
     statusText = "Reset to default"
+    root.pendingSyncValues = true
     resetProcess.running = true
   }
 
@@ -283,6 +284,7 @@ BarWidget {
         + "hyprctl reload >/dev/null 2>&1"]
     }
     revertProcess.running = true
+    root.pendingSyncValues = true
     root.statusText = "Reverted to previous state"
   }
 
@@ -388,8 +390,13 @@ BarWidget {
     }
   }
 
+  property bool pendingSyncValues: false
+
   function afterApply(output) {
-    Qt.callLater(loadValues)
+    if (root.pendingSyncValues) {
+      root.pendingSyncValues = false
+      Qt.callLater(loadValues)
+    }
   }
 
   BarIconButton {
