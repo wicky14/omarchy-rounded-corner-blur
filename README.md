@@ -41,14 +41,6 @@ copies `appearance.lua` to `~/.config/hypr/` and adds
 `require("hypr.appearance")` to `~/.config/hypr/hyprland.lua` automatically, then
 reloads Hyprland.
 
-A shell restart is required for the bar to pick up newly added widget files:
-
-```bash
-omarchy restart shell
-```
-
-> A shell restart is required for the bar to pick up newly added widget files.
-
 ## Usage
 
 Click the sliders icon (right side of the bar by default) to open the panel.
@@ -64,38 +56,32 @@ bar, so Hyprland falls back to the values Omarchy / your theme set.
 
 - On open, the widget reads your current Hyprland values (`hyprctl getoption`),
   so the sliders always start where your setup actually is.
-- Adjusting a control writes `~/.local/state/omarchy/appearance.lua` and runs
-  `hyprctl reload`.
+- Presets, sliders, and the blur toggle change live on the window and start the
+  15-second auto-revert countdown (`~/.local/state/omarchy/appearance.lua` is
+  written instantly, then `hyprctl reload`).
+- If the countdown runs out, the previous state is written back and reloaded;
+  **Apply & restart shell** cancels the countdown, keeps the new values, and
+  restarts the bar.
 - `~/.config/hypr/appearance.lua` (auto-installed on first launch) applies that
   state via `hl.config({ decoration = ... })`.
-- **Reset** deletes the state file and reloads — no leftover state, your theme
-  defaults win again.
+- **Reset** deletes the state file, reloads, and restarts the bar — no leftover
+  state, your theme defaults win again.
 
 The plugin never edits `looknfeel.lua` or theme files. On first launch it adds a
 single `require("hypr.appearance")` line to `hyprland.lua` and an
-`appearance.lua` module; removing the plugin plus those two files fully restores
-Omarchy.
+`appearance.lua` module.
 
 ## Uninstall
 
 ```bash
-omarchy plugin remove custom.rounded-corner-blur --yes
-rm ~/.config/hypr/appearance.lua
-rm ~/.local/state/omarchy/appearance.lua
+omarchy plugin remove custom.rounded-corner-blur --yes \
+  && sed -i 's|^require("hypr.appearance")|-- require("hypr.appearance")|' ~/.config/hypr/hyprland.lua \
+  && hyprctl reload
 ```
 
-Then remove the `require("hypr.appearance")` line from
-`~/.config/hypr/hyprland.lua`:
-
-```bash
-sed -i '/require("hypr.appearance")/d' ~/.config/hypr/hyprland.lua
-```
-
-Apply with:
-
-```bash
-hyprctl reload
-```
+The `require` line is commented out (not deleted) so the state file is never
+touched again after uninstall — no leftover state, your theme defaults win
+again.
 
 ## License
 
