@@ -38,8 +38,11 @@ top-bar dropdown — without touching any config file while you tweak.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/wicky14/omarchy-rounded-corner-blur.git --enable --yes
+omarchy plugin add https://github.com/wicky14/omarchy-rounded-corner-blur.git --enable
 ```
+
+The installer asks which bar section (left / center / right) you want the widget
+in. Choose one and it is placed there.
 
 No manual config setup needed — the plugin wires itself up on first launch: it
 copies `appearance.lua` to `~/.config/hypr/` and adds
